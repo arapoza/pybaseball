@@ -76,3 +76,6 @@ def team_batting(start_season, end_season=None, league='all', ind=1):
     table = get_table(soup, ind)
     table = postprocessing(table)
     return table
+
+
+print(team_batting(2017))

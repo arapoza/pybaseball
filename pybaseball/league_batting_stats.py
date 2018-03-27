@@ -47,10 +47,23 @@ def get_soup(start_dt, end_dt):
     return BeautifulSoup(s, "html.parser")
 
 
-def get_table(soup):
-    table = soup.find_all('table')[0]
+def get_soup_fg(playerid):
+    url = "https://www.fangraphs.com/statss.aspx?playerid={}".format(playerid)
+    s = requests.get(url).content
+    return BeautifulSoup(s, "html.parser")
+
+
+def get_table(soup, site):
+    if site == -1:
+        tables = soup.find_all('table')
+        table = tables[9]
+    else:
+        table = soup.find_all('table')[0]
     data = []
-    headings = [th.get_text() for th in table.find("tr").find_all("th")][1:]
+    if site == -1:
+        headings = headings = [th.get_text() for th in table.find("tr").find_all("th")][:]
+    else:
+        headings = [th.get_text() for th in table.find("tr").find_all("th")][1:]
     data.append(headings)
     table_body = table.find('tbody')
     rows = table_body.find_all('tr')
@@ -78,7 +91,7 @@ def batting_stats_range(start_dt=None, end_dt=None):
         raise ValueError("Year must be 2008 or later")
     # retrieve html from baseball reference
     soup = get_soup(start_dt, end_dt)
-    table = get_table(soup)
+    table = get_table(soup, 0)
     table = table.dropna(how='all')  # drop if all columns are NA
     # scraped data is initially in string format.
     # convert the necessary columns to numeric.
@@ -91,6 +104,26 @@ def batting_stats_range(start_dt=None, end_dt=None):
     table = table.drop('', 1)
     return table
 
+
+def batting_stats_player(playerid):
+    """
+    Get all batting stats for a set time range. This can be the past week, the
+    month of August, anything. Just supply the start and end date in YYYY-MM-DD
+    format.
+    """
+    # retrieve html from baseball reference
+    soup = get_soup_fg(playerid)
+    table = get_table(soup, -1)
+    table = table.dropna(how='all')  # drop if all columns are NA
+    # scraped data is initially in string format.
+    # convert the necessary columns to numeric.
+    for column in ['G', 'AB', 'PA', 'H', '1B', '2B', '3B',
+                    'HR', 'R', 'RBI', 'BB', 'IBB', 'SO', 'HBP', 'SF', 'SH', 'GDP',
+                    'SB', 'CS', 'AVG']:
+        # table[column] = table[column].astype('float')
+        table[column] = pd.to_numeric(table[column])
+        # table['column'] = table['column'].convert_objects(convert_numeric=True)
+    return table
 
 def batting_stats_bref(season=None):
     """
@@ -120,3 +153,6 @@ def bwar_bat(return_all=False):
                         'pitcher','G', 'PA', 'salary', 'runs_above_avg', 'runs_above_avg_off','runs_above_avg_def',
                         'WAR_rep','WAA','WAR']
         return c[cols_to_keep]
+
+
+print(batting_stats_player(13613))
